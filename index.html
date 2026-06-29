@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recipes</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #F0E9DF;
+  --card-bg:     #FDFAF6;
+  --accent:      #BF7E4A;
+  --accent-deep: #9B6438;
+  --accent-pale: #F0DFC9;
+  --text-h:      #251A0E;
+  --text-b:      #584236;
+  --text-dim:    #9C7E6A;
+  --border:      #E0D3C3;
+  --sh-sm:       0 2px 8px  rgba(80,40,10,.07);
+  --sh-md:       0 6px 24px rgba(80,40,10,.13);
+  --sh-lg:       0 20px 60px rgba(80,40,10,.2);
+  --r:           14px;
+  --r-sm:        8px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-b);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* HEADER */
+.site-header { text-align: center; padding: 3.5rem 1.5rem 2.75rem; }
+.site-icon { display: inline-block; color: var(--accent); margin-bottom: 0.8rem; }
+.site-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2.25rem;
+  font-weight: normal;
+  color: var(--text-h);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.site-sub {
+  margin-top: 0.55rem;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  letter-spacing: 0.18em;
+  font-weight: 300;
+  font-family: 'Segoe UI Light', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* GRID */
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+  gap: 1.5rem;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 1.5rem 5rem;
+}
+
+/* CARD */
+.recipe-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.5rem;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--sh-sm);
+  transition: transform .2s ease, box-shadow .2s ease;
+  outline: none;
+}
+.recipe-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 0; height: 3px;
+  background: var(--accent);
+  transition: width .3s ease;
+}
+.recipe-card:hover,
+.recipe-card:focus-visible { transform: translateY(-4px); box-shadow: var(--sh-md); }
+.recipe-card:hover::after,
+.recipe-card:focus-visible::after { width: 100%; }
+
+.card-emoji { font-size: 2rem; line-height: 1; display: block; margin-bottom: 0.9rem; user-select: none; }
+.card-title {
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: normal;
+  color: var(--text-h);
+  line-height: 1.35;
+  margin-bottom: 0.4rem;
+}
+.card-desc { font-size: 0.775rem; color: var(--text-dim); margin-bottom: 1.1rem; }
+.card-meta { display: flex; gap: 1rem; font-size: 0.74rem; color: var(--text-dim); }
+.card-meta-item { display: flex; align-items: center; gap: 0.3rem; }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(37,26,14,.52);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.25rem;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal-inner {
+  background: var(--card-bg);
+  border-radius: var(--r);
+  width: 100%; max-width: 840px; max-height: 88vh;
+  display: flex; flex-direction: column;
+  box-shadow: var(--sh-lg);
+  transform: translateY(14px) scale(.99);
+  transition: transform .25s ease;
+  overflow: hidden;
+}
+.modal-overlay.open .modal-inner { transform: none; }
+
+/* MODAL HEAD */
+.modal-head {
+  padding: 1.75rem 2rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.modal-head-row {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.25rem;
+}
+.modal-title {
+  font-family: Georgia, serif;
+  font-size: 1.45rem; font-weight: normal;
+  color: var(--text-h); line-height: 1.25;
+}
+.modal-desc { font-size: 0.78rem; color: var(--text-dim); margin-top: 0.3rem; }
+
+.btn-close {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim); flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.btn-close:hover { background: var(--accent-pale); color: var(--text-h); }
+
+/* CONTROLS */
+.controls {
+  display: flex; flex-wrap: wrap;
+  align-items: center; gap: 0.5rem 0.875rem;
+}
+.ctrl-grp { display: flex; align-items: center; gap: 0.35rem; }
+.ctrl-lbl { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); }
+
+.pill { display: flex; background: var(--border); border-radius: 100px; padding: 2px; gap: 1px; }
+.pill button {
+  border: none; background: none;
+  padding: 2px 10px; border-radius: 100px;
+  font-size: 0.72rem; cursor: pointer;
+  color: var(--text-dim);
+  transition: background .15s, color .15s;
+  font-family: inherit; line-height: 1.65; white-space: nowrap;
+}
+.pill button.on {
+  background: var(--card-bg); color: var(--accent);
+  font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.1);
+}
+
+.ctrl-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+
+/* SERVINGS */
+.svc-row { display: flex; align-items: center; gap: 0.4rem; }
+.svc-btn {
+  width: 24px; height: 24px;
+  border-radius: 50%; border: 1px solid var(--border);
+  background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; line-height: 1; color: var(--text-b);
+  transition: background .15s; flex-shrink: 0;
+}
+.svc-btn:hover { background: var(--accent-pale); }
+.svc-num {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem; color: var(--text-h);
+  min-width: 22px; text-align: center;
+}
+
+/* MODAL BODY */
+.modal-body {
+  flex: 1; overflow-y: auto;
+  padding: 1.75rem 2rem;
+  scroll-behavior: smooth;
+}
+.modal-body::-webkit-scrollbar { width: 5px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.recipe-cols {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 2.5rem;
+}
+
+/* SECTION LABEL */
+.sec-lbl {
+  font-size: 0.65rem;
+  text-transform: uppercase; letter-spacing: 0.13em;
+  color: var(--text-dim); margin-bottom: 0.9rem;
+}
+
+/* INGREDIENTS */
+.ing-list { list-style: none; }
+.ing-item {
+  display: flex; align-items: center;
+  gap: 0.5rem; padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.ing-item:last-child { border-bottom: none; }
+.ing-name-wrap {
+  flex: 1; display: flex; flex-wrap: wrap;
+  align-items: center; gap: 0.35rem; min-width: 0;
+}
+.ing-name { font-size: 0.845rem; color: var(--text-b); }
+.ing-note { font-size: 0.74rem; color: var(--text-dim); font-style: italic; }
+.ing-amt {
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem; color: var(--text-h);
+  text-align: right; white-space: nowrap; flex-shrink: 0;
+}
+
+/* OPTIONAL SECTION */
+.opt-sec {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border);
+}
+.opt-list { list-style: none; }
+.opt-item {
+  display: flex; align-items: center;
+  gap: 0.55rem; padding: 0.42rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.opt-item:last-child { border-bottom: none; }
+
+.opt-chk {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px; height: 15px;
+  border: 1.5px solid var(--border);
+  border-radius: 3px; flex-shrink: 0;
+  cursor: pointer; position: relative;
+  background: var(--card-bg);
+  transition: background .15s, border-color .15s;
+}
+.opt-chk:checked { background: var(--accent); border-color: var(--accent); }
+.opt-chk:checked::after {
+  content: '';
+  position: absolute;
+  left: 3.5px; top: 1.5px;
+  width: 5px; height: 8px;
+  border: 1.5px solid white;
+  border-left: none; border-top: none;
+  transform: rotate(45deg);
+}
+
+.opt-label {
+  flex: 1; display: flex; flex-wrap: wrap;
+  align-items: center; gap: 0.3rem;
+  cursor: pointer; min-width: 0;
+}
+.opt-name { font-size: 0.845rem; color: var(--text-b); }
+.opt-note { font-size: 0.72rem; color: var(--text-dim); font-style: italic; }
+.opt-amt {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem; color: var(--text-dim);
+  white-space: nowrap; flex-shrink: 0;
+  transition: color .15s;
+}
+.opt-item.active .opt-amt { color: var(--text-h); }
+
+/* STEPS */
+.step-list { list-style: none; }
+.step-item { display: flex; gap: 0.9rem; margin-bottom: 1.25rem; }
+.step-n {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem; color: var(--accent);
+  font-weight: 700; padding-top: 0.2rem;
+  flex-shrink: 0; width: 1.6rem;
+}
+.step-ttl {
+  font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-h); margin-bottom: 0.2rem;
+}
+.step-txt { font-size: 0.845rem; line-height: 1.55; color: var(--text-b); }
+.step-timer {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  margin-top: 0.35rem; font-size: 0.72rem;
+  color: var(--accent); background: var(--accent-pale);
+  padding: 0.15rem 0.55rem; border-radius: 100px;
+  font-family: 'Courier New', monospace;
+}
+
+/* NOTES */
+.notes-sec { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.notes-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+.note { display: flex; gap: 0.65rem; font-size: 0.83rem; color: var(--text-b); line-height: 1.5; }
+.note::before { content: '\2014'; color: var(--accent); font-weight: 600; flex-shrink: 0; }
+
+/* NUTRITION */
+.nv-sec { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.nv-card {
+  display: inline-flex; flex-direction: column;
+  min-width: 240px; border: 1px solid var(--border);
+  border-radius: var(--r-sm); overflow: hidden;
+}
+.nv-row {
+  display: flex; justify-content: space-between;
+  align-items: center; padding: 0.38rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+.nv-row:last-child { border-bottom: none; }
+.nv-row.sep { border-top: 2px solid var(--border); }
+.nv-lbl { font-size: 0.82rem; color: var(--text-b); }
+.nv-val { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--text-h); }
+.nv-row.sub .nv-lbl { padding-left: 1rem; font-size: 0.78rem; color: var(--text-dim); }
+.nv-row.sub .nv-val { font-size: 0.77rem; color: var(--text-dim); }
+.nv-foot { font-size: 0.67rem; color: var(--text-dim); margin-top: 0.55rem; font-style: italic; }
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+  .recipe-cols { grid-template-columns: 1fr; gap: 1.75rem; }
+  .modal-head  { padding: 1.25rem 1.25rem 1rem; }
+  .modal-body  { padding: 1.25rem; }
+  .ctrl-sep    { display: none; }
+  .modal-title { font-size: 1.2rem; }
+}
+@media (max-width: 420px) {
+  .site-title  { font-size: 1.8rem; }
+  .recipe-grid { padding: 0 1rem 4rem; }
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-icon">
+    <svg width="40" height="50" viewBox="0 0 40 50" fill="none" aria-hidden="true">
+      <line x1="20" y1="48" x2="20" y2="7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M20 7 C20 7 24.5 3.5 20 1.5 C15.5 3.5 20 7 20 7Z" fill="currentColor"/>
+      <path d="M20 15 C14 14 12 9 16.5 7 C18.5 6.2 20 7 20 7Z" fill="currentColor" opacity=".85"/>
+      <path d="M20 15 C26 14 28 9 23.5 7 C21.5 6.2 20 7 20 7Z" fill="currentColor" opacity=".85"/>
+      <path d="M20 23 C14 22 12 17 16.5 15 C18.5 14.2 20 15 20 15Z" fill="currentColor" opacity=".65"/>
+      <path d="M20 23 C26 22 28 17 23.5 15 C21.5 14.2 20 15 20 15Z" fill="currentColor" opacity=".65"/>
+      <path d="M20 31 C14 30 12 25 16.5 23 C18.5 22.2 20 23 20 23Z" fill="currentColor" opacity=".42"/>
+      <path d="M20 31 C26 30 28 25 23.5 23 C21.5 22.2 20 23 20 23Z" fill="currentColor" opacity=".42"/>
+    </svg>
+  </div>
+  <h1 class="site-title">Recipes</h1>
+  <p class="site-sub">fire and fumes</p>
+</header>
+
+<main>
+  <div class="recipe-grid" id="grid"></div>
+</main>
+
+<div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="modal-inner">
+
+    <div class="modal-head">
+      <div class="modal-head-row">
+        <div>
+          <h2 class="modal-title" id="m-title"></h2>
+          <p class="modal-desc" id="m-desc"></p>
+        </div>
+        <button class="btn-close" id="btn-close" aria-label="Close">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl-grp">
+          <span class="ctrl-lbl">Serves</span>
+          <div class="svc-row">
+            <button class="svc-btn" id="svc-dec" aria-label="Decrease servings">&minus;</button>
+            <span class="svc-num" id="svc-num">10</span>
+            <button class="svc-btn" id="svc-inc" aria-label="Increase servings">+</button>
+          </div>
+        </div>
+        <div class="ctrl-sep" aria-hidden="true"></div>
+        <div class="ctrl-grp">
+          <span class="ctrl-lbl">Temp</span>
+          <div class="pill">
+            <button data-t="temp" data-v="C" class="on">&deg;C</button>
+            <button data-t="temp" data-v="F">&deg;F</button>
+          </div>
+        </div>
+        <div class="ctrl-grp">
+          <span class="ctrl-lbl">Mass</span>
+          <div class="pill">
+            <button data-t="mass" data-v="g" class="on">g</button>
+            <button data-t="mass" data-v="oz">oz</button>
+          </div>
+        </div>
+        <div class="ctrl-grp">
+          <span class="ctrl-lbl">Volume</span>
+          <div class="pill">
+            <button data-t="vol" data-v="ml" class="on">ml</button>
+            <button data-t="vol" data-v="cups">cups</button>
+          </div>
+        </div>
+        <div class="ctrl-sep" aria-hidden="true"></div>
+        <div class="ctrl-grp">
+          <span class="ctrl-lbl">Show as</span>
+          <div class="pill">
+            <button data-t="mode" data-v="mass" class="on">mass</button>
+            <button data-t="mode" data-v="volume">volume</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <div class="recipe-cols">
+        <div>
+          <p class="sec-lbl">Ingredients</p>
+          <ul class="ing-list" id="m-ings"></ul>
+          <div class="opt-sec">
+            <p class="sec-lbl" style="margin-bottom:.7rem">Optional add-ins</p>
+            <ul class="opt-list" id="m-opts"></ul>
+          </div>
+        </div>
+        <div>
+          <p class="sec-lbl">Method</p>
+          <ol class="step-list" id="m-steps"></ol>
+        </div>
+      </div>
+
+      <div class="notes-sec" id="m-notes-sec">
+        <p class="sec-lbl">Notes</p>
+        <ul class="notes-list" id="m-notes"></ul>
+      </div>
+
+      <div class="nv-sec">
+        <p class="sec-lbl">Nutritional value &middot; <span id="nv-per-lbl">per slice</span></p>
+        <div class="nv-card" id="nv-card"></div>
+        <p class="nv-foot" id="nv-foot">USDA FoodData Central. Optional add-ins excluded.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ---- DATA ---- */
+
+const RECIPES = [
+  {
+    id: 1,
+    emoji: "\uD83C\uDF5E",
+    title: "Buckwheat Banana Protein Bread",
+    description: "High protein \u00b7 No added sugar \u00b7 Low fat",
+    servings: 10,
+    servingUnit: "slices",
+
+    ingredients: [
+      { name: "buckwheat flour",
+        g: 150, oz: 5.3, cup: 1.25, ml: 295, mode: "dual",
+        nut: { kcal: 503, protein: 18.9, carb: 105.9, fiber: 9.75, fat: 4.65, fatSat: 1.01, sodium: 17 } },
+
+      { name: "whey protein powder",
+        g: 30, oz: 1.06, cup: 0.25, ml: 60, mode: "dual", note: "vanilla, no added sugar",
+        nut: { kcal: 120, protein: 24.0, carb: 3.0, fiber: 0, fat: 1.5, fatSat: 0.5, sodium: 130 } },
+
+      { name: "ripe bananas, mashed",
+        g: 180, oz: 6.35, cup: 0.75, ml: 175, mode: "dual",
+        noteGen: function(scaledG) {
+          const n = Math.round(scaledG / 90);
+          return n > 0 ? "~" + n + " medium" : null;
+        },
+        nut: { kcal: 160, protein: 1.96, carb: 41.1, fiber: 4.68, fat: 0.59, fatSat: 0.20, sodium: 2 } },
+
+      { name: "large eggs",
+        count: 2, mode: "count",
+        nut: { kcal: 143, protein: 12.6, carb: 0.72, fiber: 0, fat: 9.51, fatSat: 3.13, sodium: 142 } },
+
+      { name: "plain non-fat Greek yogurt",
+        g: 200, oz: 7.05, cup: 0.75, ml: 190, mode: "dual",
+        nut: { kcal: 118, protein: 20.38, carb: 7.2, fiber: 0, fat: 0.78, fatSat: 0.20, sodium: 72 } },
+
+      { name: "avocado oil",
+        g: 14, oz: 0.5, tbsp: 1, ml: 15, mode: "dual",
+        nut: { kcal: 124, protein: 0, carb: 0, fiber: 0, fat: 14.0, fatSat: 1.62, sodium: 0 } },
+
+      { name: "baking powder",
+        g: 6, oz: 0.21, tsp: 1.5, ml: 7.5, mode: "dual",
+        nut: { kcal: 3, protein: 0, carb: 1.5, fiber: 0, fat: 0, fatSat: 0, sodium: 509 } },
+
+      { name: "baking soda",
+        g: 2.3, oz: 0.08, tsp: 0.5, ml: 2.5, mode: "dual",
+        nut: { kcal: 0, protein: 0, carb: 0, fiber: 0, fat: 0, fatSat: 0, sodium: 630 } },
+
+      { name: "ground cinnamon",
+        g: 2.6, oz: 0.09, tsp: 1, ml: 5, mode: "dual",
+        nut: { kcal: 6, protein: 0.1, carb: 2.1, fiber: 1.38, fat: 0.03, fatSat: 0, sodium: 0 } },
+
+      { name: "vanilla extract",
+        tsp: 1, ml: 5, mode: "volume",
+        nut: { kcal: 12, protein: 0.06, carb: 0.53, fiber: 0, fat: 0.06, fatSat: 0, sodium: 0 } },
+
+      { name: "salt",
+        mode: "pinch",
+        nut: { kcal: 0, protein: 0, carb: 0, fiber: 0, fat: 0, fatSat: 0, sodium: 197 } },
+    ],
+
+    optionals: [
+      { id: "walnut", name: "Walnuts",
+        g: 30, oz: 1.06, cup: 0.25, ml: 65, mode: "dual",
+        nut: { kcal: 196, protein: 4.6, carb: 4.1, fiber: 2.0, fat: 19.6, fatSat: 1.8, sodium: 1 } },
+
+      { id: "pista", name: "Pistachios",
+        g: 30, oz: 1.06, cup: 0.25, ml: 70, mode: "dual",
+        nut: { kcal: 168, protein: 6.0, carb: 8.2, fiber: 3.2, fat: 13.6, fatSat: 1.8, sodium: 0 } },
+
+      { id: "choc_chips", name: "Chocolate chips",
+        g: 30, oz: 1.06, tbsp: 3, ml: 45, mode: "dual", note: "dark; adds sugar",
+        nut: { kcal: 144, protein: 1.65, carb: 16.6, fiber: 1.8, fat: 8.3, fatSat: 5.0, sodium: 1 } },
+
+      { id: "honey", name: "Honey",
+        ml: 15, tbsp: 1, mode: "volume", note: "adds ~1.7g sugar/slice",
+        nut: { kcal: 64, protein: 0.06, carb: 17.3, fiber: 0, fat: 0, fatSat: 0, sodium: 1 } },
+
+      { id: "pumpkin_seeds", name: "Pumpkin seeds",
+        g: 15, oz: 0.53, tbsp: 2, ml: 20, mode: "dual",
+        nut: { kcal: 84, protein: 4.5, carb: 1.6, fiber: 0.9, fat: 7.4, fatSat: 1.3, sodium: 1 } },
+
+      { id: "flaxseed", name: "Flaxseed",
+        g: 15, oz: 0.53, tbsp: 2, ml: 20, mode: "dual",
+        nut: { kcal: 80, protein: 2.7, carb: 4.3, fiber: 4.1, fat: 6.3, fatSat: 0.55, sodium: 5 } },
+    ],
+
+    steps: [
+      { title: "Preheat",      body: "Preheat oven to {T:175}. Line a standard loaf pan with parchment paper." },
+      { title: "Mash bananas", body: "Mash the bananas until smooth with no large lumps. Spotted or brown-skinned bananas are sweeter \u2014 no added sugar needed." },
+      { title: "Mix wet",      body: "Add the eggs, Greek yogurt, avocado oil, and vanilla to the banana. Whisk until combined." },
+      { title: "Mix dry",      body: "In a separate bowl, whisk together the buckwheat flour, whey protein, baking powder, baking soda, cinnamon, and salt." },
+      { title: "Combine",      body: "Fold the dry mix into the wet until just combined. A few flour streaks are fine \u2014 do not overmix or the loaf will be dense." },
+      { title: "Bake",         body: "Pour batter into the lined pan. Bake 45\u201350 minutes until a toothpick in the centre comes out clean. Tent loosely with foil if the top browns early.", timer: 2700 },
+      { title: "Cool",         body: "Cool in the pan for 10 minutes, then transfer to a wire rack. Slice only once fully cooled \u2014 buckwheat bread is fragile when hot.", timer: 600 },
+    ],
+
+    notes: [
+      "Use whey protein with zero added sugar \u2014 added sugar accumulates across the loaf.",
+      "Fold in any optional dry add-ins (nuts, seeds, chips) just before pouring into the pan.",
+      "Refrigerates for 4 days. Freeze individual slices \u2014 reheats well in a toaster.",
+    ],
+  },
+];
+
+/* ---- STATE ---- */
+
+const S = {
+  tempUnit: 'C', massUnit: 'g', volUnit: 'ml', mode: 'mass',
+  servings: 10, baseServings: 10,
+  recipe: null,
+  optionals: {}
+};
+
+/* ---- FORMAT HELPERS ---- */
+
+function fmtTemp(c) {
+  return S.tempUnit === 'F' ? Math.round(c * 9 / 5 + 32) + '\u00b0F' : c + '\u00b0C';
+}
+
+function fmtN(n, dec) {
+  dec = (dec === undefined) ? 1 : dec;
+  if (n % 1 === 0) return '' + n;
+  return '' + parseFloat(n.toFixed(dec));
+}
+
+function fmtCups(cups) {
+  const MAP = [
+    [1/8,'1/8'],[1/4,'\u00bc'],[1/3,'\u2153'],[3/8,'3/8'],
+    [1/2,'\u00bd'],[2/3,'\u2154'],[3/4,'\u00be'],[7/8,'7/8']
+  ];
+  const w = Math.floor(cups), f = cups - w;
+  if (f < 0.06) return w ? w + ' cup' + (w > 1 ? 's' : '') : '0';
+  if (f > 0.94) { const n = w + 1; return n + ' cup' + (n > 1 ? 's' : ''); }
+  let sym = fmtN(f), best = 0.12;
+  for (const [v, s] of MAP) { const d = Math.abs(f - v); if (d < best) { best = d; sym = s; } }
+  return w ? w + sym + ' cups' : sym + ' cup';
+}
+
+function fmtTsp(tsp) {
+  if (tsp >= 3) return fmtN(tsp / 3) + ' tbsp';
+  const MAP = [[0.25,'\u00bc'],[0.33,'\u2153'],[0.5,'\u00bd'],[0.67,'\u2154'],[0.75,'\u00be']];
+  const w = Math.floor(tsp), f = tsp - w;
+  if (f < 0.08) return w + ' tsp';
+  let sym = fmtN(f), best = 0.1;
+  for (const [v, s] of MAP) { const d = Math.abs(f - v); if (d < best) { best = d; sym = s; } }
+  return w ? w + sym + ' tsp' : sym + ' tsp';
+}
+
+function fmtGrams(g) {
+  if (g >= 10) return Math.round(g) + ' g';
+  return fmtN(g) + ' g';
+}
+
+function fmtIng(ing, scale) {
+  switch (ing.mode) {
+    case 'count': {
+      const n = ing.count * scale;
+      return '' + Math.max(1, Math.round(n));
+    }
+    case 'pinch':
+      return 'a pinch';
+    case 'volume': {
+      // volume-only: honey, vanilla — never switch to mass
+      const ml = (ing.ml !== undefined ? ing.ml : (ing.tbsp ? ing.tbsp * 15 : 0)) * scale;
+      if (S.volUnit === 'ml') return fmtN(ml) + ' ml';
+      if (ing.tbsp !== undefined) return fmtN(ing.tbsp * scale) + ' tbsp';
+      if (ing.tsp  !== undefined) return fmtTsp(ing.tsp * scale);
+      return fmtN(ml / 15) + ' tbsp';
+    }
+    case 'dual': {
+      if (S.mode === 'mass') {
+        if (S.massUnit === 'oz') return fmtN(ing.oz * scale) + ' oz';
+        return fmtGrams(ing.g * scale);
+      } else {
+        if (S.volUnit === 'ml') return fmtN(ing.ml * scale) + ' ml';
+        // US volume: tsp for small, tbsp for medium, cups for large
+        if (ing.tsp  !== undefined) return fmtTsp(ing.tsp * scale);
+        if (ing.tbsp !== undefined) return fmtN(ing.tbsp * scale) + ' tbsp';
+        return fmtCups(ing.cup * scale);
+      }
+    }
+    default:
+      return '\u2014';
+  }
+}
+
+function fmtTimer(s) {
+  if (s < 60) return s + 's';
+  const m = Math.floor(s / 60), r = s % 60;
+  return r ? m + 'm ' + r + 's' : m + ' min';
+}
+
+function processBody(txt) {
+  return txt.replace(/\{T:(\d+)\}/g, (_, c) => fmtTemp(+c));
+}
+
+/* ---- NUTRITION ---- */
+
+function computeNutrition(recipe) {
+  const keys = ['kcal','protein','carb','fiber','fat','fatSat','sodium'];
+  const totals = {};
+  keys.forEach(k => totals[k] = 0);
+
+  recipe.ingredients.forEach(ing => {
+    if (!ing.nut) return;
+    keys.forEach(k => totals[k] += ing.nut[k] || 0);
+  });
+
+  (recipe.optionals || []).forEach(opt => {
+    if (!S.optionals[opt.id] || !opt.nut) return;
+    keys.forEach(k => totals[k] += opt.nut[k] || 0);
+  });
+
+  return totals;
+}
+
+function renderNutrition(recipe) {
+  const totals = computeNutrition(recipe);
+  const sv = recipe.servings;
+
+  function p(k, dec) {
+    return parseFloat((totals[k] / sv).toFixed(dec !== undefined ? dec : 1));
+  }
+
+  const netCarb = parseFloat(((totals.carb - totals.fiber) / sv).toFixed(1));
+  const unsat   = parseFloat(((totals.fat  - totals.fatSat) / sv).toFixed(1));
+  const unit    = recipe.servingUnit.replace(/s$/, '');
+
+  document.getElementById('nv-per-lbl').textContent = 'per ' + unit;
+
+  function row(cls, label, val) {
+    return '<div class="nv-row' + (cls ? ' '+cls : '') + '">' +
+      '<span class="nv-lbl">' + label + '</span>' +
+      '<span class="nv-val">' + val + '</span></div>';
+  }
+
+  document.getElementById('nv-card').innerHTML =
+    row('', 'Calories',     p('kcal', 0) + ' kcal') +
+    row('', 'Protein',      p('protein') + ' g') +
+    row('sep', 'Total Carbs', p('carb') + ' g') +
+    row('sub', 'Fiber',     p('fiber') + ' g') +
+    row('sub', 'Net Carbs', netCarb + ' g') +
+    row('sep', 'Total Fat', p('fat') + ' g') +
+    row('sub', 'Saturated', p('fatSat') + ' g') +
+    row('sub', 'Unsaturated', unsat + ' g') +
+    row('sep', 'Sodium',    Math.round(totals.sodium / sv) + ' mg');
+
+  const activeCount = (recipe.optionals || []).filter(o => S.optionals[o.id]).length;
+  document.getElementById('nv-foot').textContent = activeCount > 0
+    ? 'USDA FoodData Central. Includes ' + activeCount + ' active add-in' + (activeCount > 1 ? 's' : '') + '.'
+    : 'USDA FoodData Central. Optional add-ins excluded.';
+}
+
+/* ---- RENDER ---- */
+
+const CLOCK_SVG = '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
+const STEPS_SVG = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
+const SLICE_SVG = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1L1 10h10L6 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+
+function renderGrid() {
+  document.getElementById('grid').innerHTML = RECIPES.map(r =>
+    '<div class="recipe-card" data-id="' + r.id + '" tabindex="0" role="button" aria-label="Open ' + r.title + '">' +
+      '<span class="card-emoji" aria-hidden="true">' + r.emoji + '</span>' +
+      '<h2 class="card-title">' + r.title + '</h2>' +
+      '<p class="card-desc">' + r.description + '</p>' +
+      '<div class="card-meta">' +
+        '<span class="card-meta-item">' + STEPS_SVG + ' ' + r.steps.length + ' steps</span>' +
+        '<span class="card-meta-item">' + SLICE_SVG + ' ' + r.servings + ' ' + r.servingUnit + '</span>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+
+  document.querySelectorAll('.recipe-card').forEach(card => {
+    card.addEventListener('click', () => openModal(+card.dataset.id));
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(+card.dataset.id); }
+    });
+  });
+}
+
+function renderIngredients(recipe, scale) {
+  document.getElementById('m-ings').innerHTML = recipe.ingredients.map(ing => {
+    const noteText = ing.noteGen ? ing.noteGen(ing.g * scale) : (ing.note || null);
+    return '<li class="ing-item">' +
+      '<span class="ing-name-wrap">' +
+        '<span class="ing-name">' + ing.name + '</span>' +
+        (noteText ? '<span class="ing-note">(' + noteText + ')</span>' : '') +
+      '</span>' +
+      '<span class="ing-amt">' + fmtIng(ing, scale) + '</span>' +
+    '</li>';
+  }).join('');
+}
+
+function renderOptionals(recipe, scale) {
+  document.getElementById('m-opts').innerHTML = (recipe.optionals || []).map(opt => {
+    const isActive = !!S.optionals[opt.id];
+    return '<li class="opt-item' + (isActive ? ' active' : '') + '">' +
+      '<input type="checkbox" class="opt-chk" data-opt="' + opt.id + '"' +
+        (isActive ? ' checked' : '') + ' aria-label="' + opt.name + '">' +
+      '<label class="opt-label">' +
+        '<span class="opt-name">' + opt.name + '</span>' +
+        (opt.note ? '<span class="opt-note">(' + opt.note + ')</span>' : '') +
+      '</label>' +
+      '<span class="opt-amt">' + fmtIng(opt, scale) + '</span>' +
+    '</li>';
+  }).join('');
+}
+
+function renderSteps(recipe) {
+  document.getElementById('m-steps').innerHTML = recipe.steps.map((step, i) =>
+    '<li class="step-item">' +
+      '<span class="step-n">' + String(i + 1).padStart(2, '0') + '</span>' +
+      '<div>' +
+        '<p class="step-ttl">' + step.title + '</p>' +
+        '<p class="step-txt">' + processBody(step.body) + '</p>' +
+        (step.timer ? '<span class="step-timer">' + CLOCK_SVG + ' ' + fmtTimer(step.timer) + '</span>' : '') +
+      '</div>' +
+    '</li>'
+  ).join('');
+}
+
+function renderNotes(recipe) {
+  const sec = document.getElementById('m-notes-sec');
+  if (recipe.notes && recipe.notes.length) {
+    document.getElementById('m-notes').innerHTML = recipe.notes
+      .map(n => '<li class="note">' + n + '</li>').join('');
+    sec.style.display = '';
+  } else {
+    sec.style.display = 'none';
+  }
+}
+
+function renderModal() {
+  const r = S.recipe;
+  if (!r) return;
+  const scale = S.servings / S.baseServings;
+
+  document.getElementById('m-title').textContent = r.title;
+  document.getElementById('m-desc').textContent  = r.description;
+  document.getElementById('svc-num').textContent = S.servings;
+
+  renderIngredients(r, scale);
+  renderOptionals(r, scale);
+  renderSteps(r);
+  renderNotes(r);
+  renderNutrition(r);
+}
+
+function openModal(id) {
+  const r = RECIPES.find(x => x.id === id);
+  if (!r) return;
+  S.recipe = r;
+  S.servings = r.servings;
+  S.baseServings = r.servings;
+  S.optionals = {};
+  (r.optionals || []).forEach(opt => { S.optionals[opt.id] = false; });
+  renderModal();
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.querySelector('.modal-body').scrollTop = 0;
+  document.getElementById('btn-close').focus();
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ---- EVENTS ---- */
+
+document.getElementById('btn-close').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+document.getElementById('svc-inc').addEventListener('click', () => {
+  if (S.servings < 50) { S.servings++; renderModal(); }
+});
+document.getElementById('svc-dec').addEventListener('click', () => {
+  if (S.servings > 1) { S.servings--; renderModal(); }
+});
+
+document.querySelectorAll('[data-t]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const keyMap = { temp: 'tempUnit', mass: 'massUnit', vol: 'volUnit', mode: 'mode' };
+    S[keyMap[btn.dataset.t]] = btn.dataset.v;
+    btn.closest('.pill').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+    renderModal();
+  });
+});
+
+// Optional checkbox delegation — attached once on static parent
+document.querySelector('.modal-inner').addEventListener('change', e => {
+  const chk = e.target;
+  if (chk.type === 'checkbox' && chk.dataset.opt) {
+    S.optionals[chk.dataset.opt] = chk.checked;
+    chk.closest('.opt-item').classList.toggle('active', chk.checked);
+    renderNutrition(S.recipe);
+  }
+});
+
+/* ---- INIT ---- */
+renderGrid();
+</script>
+</body>
+</html>
